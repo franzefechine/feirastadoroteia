@@ -187,6 +187,20 @@
   .resp:disabled{opacity:.45; cursor:default}
   .resp:focus-visible{outline:4px solid var(--azul); outline-offset:3px}
 
+  /* JOGO SECRETO */
+  .secreto{border-radius:26px; padding:clamp(18px,3.6vw,30px); margin-top:18px; color:#fff; text-align:center;
+    background:linear-gradient(170deg,#5d6470,#3f4550); box-shadow:0 9px 0 rgba(30,35,45,.28)}
+  .secreto.liberado{background:linear-gradient(170deg,#7a4fb0,#553388); box-shadow:0 9px 0 rgba(60,30,100,.3)}
+  .secreto .cadeado{font-size:44px; line-height:1}
+  .secreto h3{font-size:clamp(20px,4.6vw,26px); color:#fff; font-weight:700; margin-top:6px}
+  .secreto p{margin-top:6px; color:rgba(255,255,255,.88); font-size:16px}
+  .selos{display:flex; justify-content:center; gap:8px; flex-wrap:wrap; margin:14px 0 0; padding:0; list-style:none}
+  .selos li{font-family:"Fredoka",sans-serif; font-weight:600; font-size:14px; padding:6px 13px; border-radius:999px;
+    background:rgba(255,255,255,.14); color:rgba(255,255,255,.8); border:2px dashed rgba(255,255,255,.35)}
+  .selos li.ok{background:#bdf0a8; color:#1f541c; border:2px solid #bdf0a8}
+  a.botao{display:block; text-decoration:none; text-align:center; box-sizing:border-box}
+  .secreto .aviso-secreto{margin-top:10px; font-weight:800}
+
   /* MAIS / FECHO */
   .mais{background:var(--creme); border-radius:24px; padding:clamp(18px,3.6vw,28px); border:1px solid #efe6c8; color:#3a4a5a}
   .mais h2{font-size:clamp(20px,4.4vw,27px); color:var(--verde); font-weight:700}
@@ -348,6 +362,15 @@
         <button class="botao" id="novo3">Jogar de novo</button>
       </div>
     </div>
+
+    <!-- JOGO SECRETO -->
+    <div class="secreto" id="secreto" aria-live="polite">
+      <div class="cadeado" id="cadeado" aria-hidden="true">🔒</div>
+      <h3 id="secretoTitulo">Jogo secreto</h3>
+      <p id="secretoTexto">Termine os três jogos acima para liberar.</p>
+      <ul class="selos" id="selos"><li>Jogo 1</li><li>Jogo 2</li><li>Jogo 3</li></ul>
+      <a class="botao" id="secretoLink" href="obra-em-blocos.html#liberado" hidden>Jogar Obra em Blocos</a>
+    </div>
   </div>
 </section>
 
@@ -386,6 +409,31 @@
 
   [].forEach.call(document.querySelectorAll('img[data-foto]'),function(im){im.src=el(im.getAttribute('data-foto')).src;});
   function mostraNaTela(n){ if(n&&n.scrollIntoView) n.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+
+  /* ---------- JOGO SECRETO ---------- */
+  var CHAVE='g1-jogos-feitos', feitos=[false,false,false];
+  try{var salvo=JSON.parse(localStorage.getItem(CHAVE)||'null');if(salvo&&salvo.length===3)feitos=salvo.map(Boolean);}catch(e){}
+  function liberado(){return feitos[0]&&feitos[1]&&feitos[2];}
+  function mostraSecreto(){
+    var sel=el('selos').children;
+    for(var j=0;j<3;j++){sel[j].className=feitos[j]?'ok':'';sel[j].textContent='Jogo '+(j+1)+(feitos[j]?' ✓':'');}
+    var ok=liberado();
+    el('secreto').classList.toggle('liberado',ok);
+    el('cadeado').textContent=ok?'🔓':'🔒';
+    el('secretoTitulo').textContent=ok?'Jogo secreto liberado: Obra em Blocos':'Jogo secreto';
+    el('secretoTexto').textContent=ok?'Agora é com você: construa uma casa bloco por bloco, com a ajuda dos três engenheiros.':'Termine os três jogos acima para liberar.';
+    el('secretoLink').hidden=!ok;
+  }
+  function terminou(n){
+    var antes=liberado();
+    feitos[n-1]=true;
+    try{localStorage.setItem(CHAVE,JSON.stringify(feitos));if(liberado())localStorage.setItem('g1-obra-liberada','1');}catch(e){}
+    mostraSecreto();
+    var faltam=feitos.filter(function(f){return !f;}).length;
+    if(faltam) return (faltam>1?'Faltam '+faltam+' jogos':'Falta 1 jogo')+' para liberar o jogo secreto.';
+    return antes?'O jogo secreto está liberado, logo abaixo dos jogos.':'Você liberou o jogo secreto! Ele está logo abaixo dos jogos.';
+  }
+  function avisoSecreto(pai,texto){var p=document.createElement('p');p.className='aviso-secreto';p.style.fontWeight='800';p.textContent='🔑 '+texto;pai.appendChild(p);}
 
   /* ---------- JOGO 1 ---------- */
   var ENG={civil:{nome:"Engenheiro Civil"},eletricista:{nome:"Engenheiro Eletricista"},seguranca:{nome:"Engenheiro de Segurança"}};
@@ -436,6 +484,7 @@
       el('tit1').textContent=a1===6?'Uau! Acertou todas!':(a1>=4?'Muito bem!':'Boa tentativa!');
       el('msg1').textContent=a1>=4?'Você já sabe quem cuida de cada parte da obra.':'Olhe as fichas dos engenheiros e jogue de novo.';
       el('p1').textContent='Fim'; mostraNaTela(el('jogo1'));
+      var v1=el('fim1').querySelector('.aviso-secreto'); if(v1) v1.remove(); avisoSecreto(el('msg1').parentNode,terminou(1)); el('fim1').insertBefore(el('fim1').querySelector('.aviso-secreto'),el('novo1'));
     } else mostra1();
   });
   el('novo1').addEventListener('click',function(){comeca1();el('jogo1').scrollIntoView({behavior:'smooth',block:'start'});});
@@ -471,6 +520,7 @@
       if(passo2>6){
         el('p2').textContent='Obra pronta!';
         el('re2').innerHTML='<p class="reacao boa"><b>Casa construída!</b>Você colocou as seis etapas na ordem certa. É assim numa obra de verdade.</p>';
+        avisoSecreto(el('re2'),terminou(2));
         el('novo2').hidden=false; mostraNaTela(el('novo2'));
       } else {
         el('p2').textContent='Passo '+passo2+' de 6';
@@ -521,12 +571,13 @@
       el('tit3').textContent=a3===8?'Uau! Acertou todas!':(a3>=5?'Muito bem!':'Boa tentativa!');
       el('msg3').textContent=a3>=5?'Você sabe cuidar da segurança de uma obra.':'Olhe a ficha do engenheiro de segurança e jogue de novo.';
       el('p3').textContent='Fim'; mostraNaTela(el('jogo3'));
+      var v3=el('fim3').querySelector('.aviso-secreto'); if(v3) v3.remove(); avisoSecreto(el('fim3'),terminou(3)); el('fim3').insertBefore(el('fim3').querySelector('.aviso-secreto'),el('novo3'));
     } else mostra3();
   });
   el('novo3').addEventListener('click',function(){comeca3();el('jogo3').scrollIntoView({behavior:'smooth',block:'start'});});
   function comeca3(){o3=embaralha(Q3);i3=0;a3=0;r3=[];el('fim3').hidden=true;el('painel3').hidden=false;mostra3();}
 
-  comeca1(); comeca2(); comeca3();
+  comeca1(); comeca2(); comeca3(); mostraSecreto();
 })();
 </script>
 
